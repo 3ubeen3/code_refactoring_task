@@ -9,7 +9,6 @@ distanceFeed method:
         } else {
             $distance = "";
         }
-
       Refactor Code: 
          $distance = "";
           if (isset($data['distance']) && $data['distance'] != "") {
