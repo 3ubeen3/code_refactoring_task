@@ -1,0 +1,105 @@
+1.  In the Booking Repository we should not call the constant directly from env file. Instead we should
+retrieve from config file,i created file called it constants.php inside config folder. 
+
+2.  We can remove unnecessary else statements for cleaner code example in BookingController we have code written in
+distanceFeed method:
+     Actual Code: 
+        if (isset($data['distance']) && $data['distance'] != "") {
+            $distance = $data['distance'];
+        } else {
+            $distance = "";
+        }
+
+      Refactor Code: 
+         $distance = "";
+          if (isset($data['distance']) && $data['distance'] != "") {
+            $distance = $data['distance'];
+          }
+     We can remove same unnecceary else conditions everywhere in the code. 
+
+3. We should remove all unused veriables inside code everywhere. e.g 
+     BookingController:(resendSMSNotifications)
+     we have unused veriable called $job_data.
+
+4. I would like to write code for BookingRepository:storeJobEmail method something Like that 
+       Refactor Code: 
+       public function storeJobEmail($data)
+            {
+                $job = Job::findOrFail(@$data['user_email_job_id']);
+                $job->user_email = @$data['user_email'];
+                $job->reference = isset($data['reference']) ? $data['reference'] : '';
+                $user = $job->user()->first();
+
+                if (isset($data['address'])) {
+                    $job->address = $data['address'] ?: $user->userMeta->address;
+                    $job->instructions = $data['instructions'] ?: $user->userMeta->instructions;
+                    $job->town = $data['town'] ?: $user->userMeta->city;
+                }
+                $job->save();
+
+                $email = $job->user_email ?: $user->email;
+                $name = $user->name;
+                $subject = 'Vi har mottagit er tolkbokning. Bokningsnr: #' . $job->id;
+                $send_data = [
+                    'user' => $user,
+                    'job'  => $job
+                ];
+                $this->mailer->send($email, $name, $subject, 'emails.job-created', $send_data);
+
+                $response = [
+                    'type' => $data['user_type'],
+                    'job' => $job,
+                    'status' => 'success'
+                ];
+                $data = $this->jobToData($job);
+                Event::fire(new JobWasCreated($job, $data, '*'));
+                return $response;
+            }
+
+        Here What i Did: 
+        - Replaced the use of get()->first() with first() to simplify the code as there is no pupose for getting all records and then first one.
+        - Used the null coalescing operator (??) to simplify the assignment of values to $job->address, $job->instructions, $job->town, and $email
+        - Initialized the $response array using an array literal and added the $data['user_type'] value to it
+        - Removed the unnecceary $response['job'] assignment since $job is already a variable in the function
+        - Removed the unnecessary $response['status'] assignment
+        - Moved the Event::fire() call to the end of the function
+
+5.      In BookingRepository:getPotentialJobIdsWithUserId method I did the following changes which i think it should 
+         be. Instead of filtering records in foreach loop we should use laravel collection filters which 
+         are more readable,So i did 
+         - Replaced the $job_ids array with a $jobs collection, which is the result of the getJobs() function
+         - Used an if/elseif/else statement to determine the value of $job_type based on the value of $translator_type
+         - Used the pluck() and all() methods to simplify the assignment of the $languages variable
+         - Used the filter() method to filter the jobs based on the specified conditions, instead of using a foreach loop
+         - Removed the unnecessary $k and $v variables in the foreach loop
+         - Changed the name of the $job_ids variable to $filtered_jobs to reflect its new purpose
+         - Moved the call to TeHelper::convertJobIdsInObjs() outside of the foreach loop
+         - Replaced the unset() function with the filter() method to remove unwanted jobs from the collection
+
+6.  In our code we are calling Database Quries inside the loop which is not good and can cause many issues with database performance 
+       We should avoid queries in a loop instead we should first filter the record and apply apply single query for all records, 
+       
+7.  In BookingRepositry:SendNotificationTransaltors i did the changes : 
+     - Replaced the $translator_array and $delpay_translator_array arrays with a single $suitable_translators collection
+     - Used a single where() chain to filter the users based on the specified conditions, instead of using a foreach loop
+     - Removed the $oneUser and $oneJob variables, as they are not used
+     - Removed the getPotentialJobIdsWithUserId() function call and the inner foreach loop, as it is not needed to filter the suitable translators       
+
+
+8.   In my opinion, We should use write classes and functions which are responsible for only 1 task, for example
+      SendEmailClass should only be responsible for sending email to the recipient it should not validate email or
+      should not do some other task, for validating the email there should be seperate request class ,in fact laravel provides us 
+      the way we can validate the form requests inside seperate classes, 
+
+9.   We should avoid to write business  logic inside controller it should be in service class, 
+
+10.  We should avoid multiple if else conditions as the code becomes pain to debug.
+11.  For database Queries we should retrieve the columns we need instead of selecting all the columns . 
+     
+I did some changes in code i mentioned above, I refactored some methods but of course we can apply same terms for everywhere in our code , 
+Happy Coding,
+Cheers
+Mubeen (Laravel Lover)
+
+    
+
